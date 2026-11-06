@@ -1,15 +1,27 @@
 # makeloops.online
 
-A web-based music loop creator with drum pads, a melodic keyboard, multiple synth types, manual loop cropping, unlimited layers, and WAV/MP3 export.
+A browser-based music loop creator for learning rhythm, experimenting with melodies, and combining repeating layers.
 
 Live site: [makeloops.online](https://makeloops.online)
 
 ## Features
 
-- 10-key drum pad and  keyboard layout
-- Multiple synth types (Piano, Synth, Pluck, FM, AM, Membrane)
-- Layered loop recording with mute/solo and crop handles
-- WAV/MP3 export via Tone.Recorder + lamejs
+- A 16-step drum and melodic sequencer with scales and randomization
+- Ten synthesized drum sounds and six melodic presets (Piano, Synth, Pluck, FM, AM, Membrane)
+- A vertical piano-style pitch sidebar in Grid → Melodic
+- Computer keyboard and on-screen performance pads
+- One-bar event recording, layered playback, mute, solo, duplication, and volume
+- One-bar silence extensions before or after layer content
+- Local session saving and compressed share links
+- Real-time audio download through an Export WAV button. The code names the file `.wav` without converting the recorder output to PCM WAV; the actual format depends on the browser recorder. MP3 export is not implemented.
+
+## Documentation
+
+- [Application guide](docs/application-guide.md): controls, workflows, saving, sharing, export, and current limitations.
+- [Music guide](docs/music-guide.md): musical concepts, instruments, scales, keyboard maps, and a first beat exercise.
+- [Architecture](docs/architecture.md): source layout, audio flow, timing, and persistence.
+- [Feature implementation plan](docs/future-implementations.md): an ongoing roadmap for the visual piano, full piano range, longer patterns, and sustained melodic notes.
+- [Agent instructions](AGENTS.md): English language policy and contribution guidance.
 
 ## Tech Stack
 
@@ -21,7 +33,7 @@ Live site: [makeloops.online](https://makeloops.online)
 ## Development
 
 ```bash
-npm install
+npm ci
 npm run dev
 ```
 
@@ -32,13 +44,8 @@ npm run build
 npm run preview
 ```
 
-## Keyboard Map
+Use a Node.js and npm installation compatible with the locked dependencies, including Vite 7. Open the URL printed by Vite and click or tap the application to enable audio.
 
-Drums (keys 1-0):
-1 Kick, 2 Snare, 3 Closed Hat, 4 Open Hat, 5 Tom High, 6 Tom Mid, 7 Tom Low, 8 Clap, 9 Rim, 0 Crash
+The build checks TypeScript with `vue-tsc -b` and bundles the application with Vite. There is no configured test or lint script. See the music guide for complete keyboard mappings.
 
-Melodic ():
-Top row (sharps) W E T Y U O P
-Bottom row (natural) A S D F G H J K L ;
-
-Octave: Z down, X up
+Sessions live in browser storage for the current site and browser profile. Unsaved edits are not automatically preserved. The application has no project backend or account system.

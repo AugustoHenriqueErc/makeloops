@@ -88,6 +88,21 @@ const hasActiveCells = computed(() =>
 
 // Check if there are loops to play with
 const hasLoops = computed(() => looperStore.layers.length > 0)
+
+const pianoRows = computed(() => gridStore.rowNotes.map((note, index, notes) => {
+  const pitchClasses = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
+  function pitchNumber(value: string) {
+    const match = value.match(/^([A-G]#?)(\d+)$/)
+    return match ? Number(match[2]) * 12 + pitchClasses.indexOf(match[1]!) : 0
+  }
+  const below = notes[index + 1]
+  return {
+    black: note.includes('#'),
+    // In scales that omit sharps, show the intervening black key as decoration.
+    blackKeyBelow: !!below && !note.includes('#') && !below.includes('#')
+      && pitchNumber(note) - pitchNumber(below) === 2,
+  }
+}))
 </script>
 
 <template>
@@ -101,7 +116,7 @@ const hasLoops = computed(() => looperStore.layers.length > 0)
         <!-- Step Numbers Header -->
         <div class="flex">
           <!-- Spacer for row labels -->
-          <div class="w-12 sm:w-16 flex-shrink-0" />
+          <div :class="gridStore.mode === 'melodic' ? 'w-16 sm:w-20 flex-shrink-0' : 'w-12 sm:w-16 flex-shrink-0'" />
           <!-- Step numbers -->
           <div
             class="flex-1 grid"
@@ -134,8 +149,21 @@ const hasLoops = computed(() => looperStore.layers.length > 0)
               )
             "
           >
-            <!-- Row Label -->
+            <!-- The melodic pitch rail is a visual piano; drum labels are unchanged. -->
             <div
+              v-if="gridStore.mode === 'melodic'"
+              class="grid-piano-key w-16 sm:w-20 flex-shrink-0"
+              :class="{ 'grid-piano-key-black': pianoRows[rowIndex]?.black }"
+              :title="gridStore.rowNotes[rowIndex]"
+              :data-piano-note="gridStore.rowNotes[rowIndex]"
+            >
+              <span class="grid-piano-key-face">
+                <span class="grid-piano-key-label">{{ gridStore.rowLabels[rowIndex] }}</span>
+              </span>
+              <span v-if="pianoRows[rowIndex]?.blackKeyBelow" class="grid-piano-accidental" aria-hidden="true" />
+            </div>
+            <div
+              v-else
               class="w-12 sm:w-16 flex-shrink-0 px-2 py-1 bg-card/50 border-r border-border/50 flex items-center"
             >
               <span class="text-[10px] sm:text-xs text-muted-foreground truncate">
@@ -210,3 +238,52 @@ const hasLoops = computed(() => looperStore.layers.length > 0)
     </div>
   </div>
 </template>
+
+<style scoped>
+.grid-piano-key {
+  position: relative;
+  border-right: 2px solid #26262e;
+  background: #d5d4d1;
+}
+.grid-piano-key-face {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 8px;
+  border-bottom: 1px solid #9b9b9b;
+  border-radius: 0 3px 3px 0;
+  background: linear-gradient(to right, #deddd9, #fffefa);
+  color: #363640;
+  box-shadow: inset -2px 0 0 #0001;
+}
+.grid-piano-key-label {
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+}
+.grid-piano-key-black .grid-piano-key-face,
+.grid-piano-accidental {
+  z-index: 2;
+  width: 68%;
+  border: 1px solid #111116;
+  border-radius: 0 3px 3px 0;
+  background: linear-gradient(#404049, #16161e 65%, #292932);
+  color: #f5f5f5;
+  box-shadow: 2px 2px 3px #0006, inset -2px 0 0 #ffffff10;
+}
+.grid-piano-key-black .grid-piano-key-face {
+  top: 10%;
+  bottom: 10%;
+  padding-right: 5px;
+}
+.grid-piano-accidental {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 48%;
+  transform: translateY(50%);
+  pointer-events: none;
+}
+</style>
