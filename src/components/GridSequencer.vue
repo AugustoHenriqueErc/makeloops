@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, nextTick, watch } from 'vue'
 import { useGridStore } from '@/stores/gridStore'
 import { useLooperStore } from '@/stores/looperStore'
 import { useAudioStore } from '@/stores/audioStore'
@@ -88,6 +88,25 @@ const hasActiveCells = computed(() =>
 
 // Check if there are loops to play with
 const hasLoops = computed(() => looperStore.layers.length > 0)
+const fullPiano = computed(() => gridStore.mode === 'melodic' && gridStore.melodicRange === 'piano')
+const pianoViewport = ref<HTMLElement | null>(null)
+const jumpNote = ref('C4')
+const octaveTargets = ['C8', 'C7', 'C6', 'C5', 'C4', 'C3', 'C2', 'C1', 'A0']
+
+function scrollToNote(note: string) {
+  const viewport = pianoViewport.value
+  const key = viewport?.querySelector<HTMLElement>(`[data-piano-note="${note}"]`)
+  if (!viewport || !key) return
+  const offset = key.getBoundingClientRect().top - viewport.getBoundingClientRect().top
+  viewport.scrollTop += offset - viewport.clientHeight / 2 + key.clientHeight / 2
+}
+
+watch(fullPiano, async enabled => {
+  if (!enabled) return
+  await nextTick()
+  jumpNote.value = 'C4'
+  scrollToNote('C4')
+}, { immediate: true })
 
 const pianoRows = computed(() => gridStore.rowNotes.map((note, index, notes) => {
   const pitchClasses = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
@@ -110,11 +129,35 @@ const pianoRows = computed(() => gridStore.rowNotes.map((note, index, notes) => 
     <!-- Controls Bar -->
     <GridControls />
 
+    <div v-if="gridStore.mode === 'melodic'" class="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+      <template v-if="fullPiano">
+        <span>88 keys · A0–C8 · Scroll to explore</span>
+        <label for="piano-octave-jump">Go to</label>
+        <select
+          id="piano-octave-jump"
+          v-model="jumpNote"
+          class="h-8 px-2 rounded-md border border-border bg-secondary/50 text-foreground"
+          @change="scrollToNote(jumpNote)"
+        >
+          <option v-for="note in octaveTargets" :key="note" :value="note">{{ note }}</option>
+        </select>
+        <Button variant="secondary" size="sm" @click="jumpNote = 'C4'; scrollToNote('C4')">Middle C</Button>
+      </template>
+      <span>Scale and Full piano keep separate patterns.</span>
+    </div>
+
     <!-- Grid Container -->
-    <div class="overflow-x-hidden">
+    <div
+      ref="pianoViewport"
+      class="overflow-x-hidden"
+      :class="{ 'piano-viewport': fullPiano }"
+      :tabindex="fullPiano ? 0 : undefined"
+      :role="fullPiano ? 'region' : undefined"
+      :aria-label="fullPiano ? 'Full piano grid, A0 to C8. Scroll vertically to explore pitches.' : undefined"
+    >
       <div class="min-w-0">
         <!-- Step Numbers Header -->
-        <div class="flex">
+        <div class="flex" :class="{ 'piano-step-header': fullPiano }">
           <!-- Spacer for row labels -->
           <div :class="gridStore.mode === 'melodic' ? 'w-16 sm:w-20 flex-shrink-0' : 'w-12 sm:w-16 flex-shrink-0'" />
           <!-- Step numbers -->
@@ -145,6 +188,8 @@ const pianoRows = computed(() => gridStore.rowNotes.map((note, index, notes) => 
             :class="
               cn(
                 'flex',
+                fullPiano && 'piano-grid-row',
+                fullPiano && gridStore.rowNotes[rowIndex] === 'C4' && 'middle-c-row',
                 rowIndex !== gridStore.pattern.length - 1 && 'border-b border-border/50'
               )
             "
@@ -183,6 +228,9 @@ const pianoRows = computed(() => gridStore.rowNotes.map((note, index, notes) => 
                 :velocity="cell.velocity"
                 :is-current-step="gridStore.currentStep === stepIndex"
                 :is-beat="stepIndex % 4 === 0"
+                :class="{ 'piano-grid-cell': fullPiano }"
+                :aria-label="`${gridStore.rowNotes[rowIndex]}, step ${stepIndex + 1}`"
+                :aria-pressed="cell.active"
                 @toggle="gridStore.toggleCell(rowIndex, stepIndex)"
               />
             </div>
@@ -240,6 +288,32 @@ const pianoRows = computed(() => gridStore.rowNotes.map((note, index, notes) => 
 </template>
 
 <style scoped>
+.piano-viewport {
+  max-height: min(60vh, 480px);
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  scrollbar-gutter: stable;
+}
+.piano-viewport:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+.piano-step-header {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--color-background);
+}
+.piano-grid-row {
+  height: 32px;
+}
+.piano-grid-cell {
+  aspect-ratio: auto;
+  height: 31px;
+}
+.middle-c-row .grid-piano-key-face {
+  box-shadow: inset -3px 0 0 var(--color-primary);
+}
 .grid-piano-key {
   position: relative;
   border-right: 2px solid #26262e;

@@ -31,6 +31,14 @@ export const ROOT_NOTES: RootNote[] = [
   'B',
 ]
 
+// A standard 88-key piano, highest pitch first (MIDI 108 / C8 to 21 / A0).
+export const PIANO_NOTES: readonly string[] = Object.freeze(
+  Array.from({ length: 88 }, (_, index) => {
+    const midi = 108 - index
+    return `${ROOT_NOTES[midi % 12]}${Math.floor(midi / 12) - 1}`
+  })
+)
+
 /**
  * Get scale notes for a given root, scale, and octave
  * Returns array of note names like ['C4', 'D4', 'E4', ...]

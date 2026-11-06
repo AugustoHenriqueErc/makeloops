@@ -9,7 +9,7 @@ The goal is to support learning music through small experiments: play a recogniz
 | ID | Feature | Status | Dependency |
 | --- | --- | --- | --- |
 | F-001 | Piano-style sidebar in Grid → Melodic | Implemented; visual validation recorded below | None |
-| F-002 | Full piano range | Planned; range needs confirmation | F-001 |
+| F-002 | Full piano range in the melodic grid | Implemented; verified in headless Chrome on 2026-11-06 | F-001 |
 | F-003 | Longer grid patterns and loops | Planned | None; scheduled after F-002 |
 | F-004 | Sustained melodic notes in the grid | Planned; interaction needs confirmation | F-003 timing and persistence foundations |
 
@@ -32,9 +32,9 @@ Resolved decisions are recorded below alongside open questions for later feature
 | Topic | Working interpretation | Open decision |
 | --- | --- | --- |
 | Piano placement | Vertical piano-style sidebar replacing the pitch labels in Grid → Melodic, high pitches at the top. | Confirmed by the user; Keyboard mode keeps its original pads. |
-| Piano extent | A traditional 88-key piano, A0 through C8 inclusive, reached through scrolling. | Confirm 88 keys or specify another range. “All notes” does not imply an unlimited pitch range. |
+| Piano extent | A traditional 88-key piano, A0 through C8 inclusive, reached through scrolling. | F-002 follows this baseline; the synth still supports 16 simultaneous voices per preset. |
 | Joining notes | Extend a note across consecutive steps of the same pitch, with one attack and one release. | Confirm this is held-note duration, rather than connecting different pitches or using a sustain pedal. |
-| Grid pitch range | The piano belongs to the melodic grid; F-001 preserves the selected scale and current rows. | Confirm how F-002 should combine a full pitch range with scale filtering. |
+| Grid pitch range | Range selects Scale or Full piano in Grid → Melodic. | F-002 keeps separate patterns, with Scale as the backward-compatible default. Keyboard mode is unchanged. |
 
 ## F-001 — Piano-style sidebar in Grid → Melodic
 
@@ -75,30 +75,45 @@ The initial Keyboard-mode implementation was superseded by the user's clarificat
 - The three Keyboard-related source files were restored exactly to their original repository versions; the original melodic pad was also checked in the browser.
 - No audio behavior or persistence format was changed by this correction.
 
-## F-002 — Full piano range
+## F-002 — Full piano range in Grid → Melodic
 
-### Goal
+### Goal and implementation decisions
 
-Make the full confirmed piano range available to play. The proposed baseline is 88 chromatic pitches from A0 to C8, including all white and black keys. This expands available pitches, not the number of simultaneous synth voices or the sound library.
+Provide 88 chromatic pitch rows, A0 through C8 inclusive, in the melodic grid. A new Range selector offers **Scale** (the original view and default for old projects) and **Full piano (88 keys)**. Each range retains its own pattern. Keyboard mode keeps its original performance pad and shortcuts.
 
-### Implementation steps
+The full piano uses fixed pitches without scale filtering or transposition. Root, Scale, and Octave controls remain available in Scale range. The range expansion changes available pitches, not tempo, loop length, note duration, presets, or polyphony.
 
-1. Generate the pitch list from explicit lowest/highest bounds rather than manually adding keys. Use one canonical pitch identity for rendering, audio, highlights, and recording.
-2. Introduce a scrollable viewport with usable key sizes instead of squeezing 88 keys into one screen. Start around middle C (C4), with octave markers and a way to return there.
-3. Adapt octave/navigation controls to the full-range view. Keep computer shortcuts mapped to a limited playable window and clamp that window to the confirmed bounds.
-4. Keep drum shortcuts available. Keys outside the shortcut window remain playable through the on-screen piano.
-5. Preserve the pitch captured when pressing, so scrolling or changing octaves cannot cause release to target a different note.
-6. Verify extreme pitches, viewport navigation, recording, and interaction cleanup. Explicitly document the 16-voice synth limit as separate from the 88-key range.
+### Implementation
+
+1. Generate an immutable descending pitch list from MIDI note 108 (C8) through 21 (A0).
+2. Add a bounded vertical viewport with 32 px rows and a sticky step header. Center middle C (C4) on entry, label each octave, and provide octave/endpoint jumps and a Middle C return button.
+3. Use the selected pitch list consistently for cell audition, preview, event conversion, and layers. Preview from Drums uses the retained pattern for the selected melodic range.
+4. Preserve drum, per-scale, and full-piano patterns independently when switching views. Clear and randomization affect only the current pattern.
+5. Include optional range and piano-pattern fields in the session schema. Missing fields default to the original Scale view; new share links use version 2 while version 1 remains readable.
+6. Convert melodic layers back into the full-range grid so pitches across octaves within A0–C8 survive editing. Existing step snapping and short fixed durations remain; longer patterns and sustained notes belong to F-003/F-004.
 
 ### Acceptance criteria
 
-- With the proposed range, exactly 88 unique pitches are available, including A0 and C8.
-- Every pitch can be reached and played without unreadably small keys.
-- Labels and note events agree across octave boundaries.
-- Scrolling does not accidentally play notes; active touches and note releases remain reliable.
-- Existing sessions and recordings retain their original pitches.
+- Exactly 88 unique pitches are available, including A0 and C8: 52 natural and 36 sharp keys.
+- Every pitch is reachable without shrinking row heights; scrolling does not edit notes.
+- Audition, preview, generated events, and layer playback use the same pitch identities.
+- Switching ranges or modes preserves each retained pattern, without transposing full-piano pitches.
+- Save/load and sharing retain range and pattern data. Older sessions and version-1 links retain their original Scale behavior.
+- Keyboard mode is unchanged; grid length remains 16 steps and BPM is unchanged.
 
-F-002 needs a scope update before implementation: the piano is now confirmed to belong to the melodic grid, so confirm how full-range rows interact with scale filtering and scrolling. The earlier playable-Keyboard assumptions below are provisional and must not change Keyboard mode without a separate request. New sampled piano sounds, weighted-key velocity, and external MIDI support remain separate features.
+### Delivery record — 2026-11-06
+
+- `npm run build` passed, with Vite's bundle-size advisory.
+- Headless Chrome checks passed for pitch count/order, white/black key counts, endpoint scrolling, middle-C positioning, sticky step labels, cell audition, range/mode switching, and scale-pattern preservation.
+- A0, C4, and C8 were verified through cell audition, both preview modes, event conversion, looper playback, and melodic layer-to-grid conversion.
+- Audio generation was checked through a master waveform analyser; this is not a physical-device listening test.
+- Full-range sessions and version-2 links restored the same patterns; legacy sessions and version-1 links loaded without the new fields.
+- Desktop screenshots and mobile layouts were checked at 320 px and 375 px without horizontal page overflow. Full-range rows retain their height.
+- Emulated touch scrolling moved the viewport without changing cells; keyboard scrolling, endpoint jumps, and isolation of clear/randomization actions were also checked.
+
+### Remaining limits
+
+The presets still have 16-voice polyphony. Randomizing many rows or placing more simultaneous pitches can exceed that limit. Notes outside A0–C8 are omitted on layer-to-grid conversion. There is no new sampled piano, MIDI integration, sustain pedal, note-length editor, or longer loop in this feature.
 
 ## F-003 — Longer patterns without changing BPM
 

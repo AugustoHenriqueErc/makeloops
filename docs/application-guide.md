@@ -14,14 +14,15 @@ Click or tap the application to enable audio. Browser audio policies may require
 
 Each column is one sixteenth note. The 16 columns form one bar. Rows represent drum sounds or pitches. Click a cell to toggle it; enabling a cell also auditions its sound. Multiple cells in the same column play together.
 
-In Grid → Melodic, the left pitch labels are styled as a vertical piano with white natural keys and dark sharp keys. Higher pitches remain at the top. Decorative black keys appear between adjacent natural rows separated by a sharp; they do not add notes outside the selected scale. The sidebar is visual only: use the grid cells to place and audition notes. Keyboard mode retains its original performance pads.
+In Grid → Melodic, the left pitch labels are styled as a vertical piano with white natural keys and dark sharp keys. Higher pitches remain at the top. In Scale range, decorative black keys appear between adjacent natural rows separated by a sharp; they do not add notes outside the selected scale. Full piano range instead provides an editable row for each of the 88 chromatic pitches from A0 to C8. The sidebar is visual only: use the grid cells to place and audition notes. Keyboard mode retains its original performance pads.
 
 | Control | Function |
 | --- | --- |
 | Drums / Melodic | Switch the pattern being edited, retaining patterns when switching. |
-| Root | Set the melodic scale's starting pitch. Existing cells keep their row positions and map to the new pitches. |
-| Scale | Select available melodic pitches. Each scale retains a separate pattern. |
-| Octave | Set the melodic grid register from 2 to 6. |
+| Range | Choose Scale (the original scale-filtered view) or Full piano (88 keys, A0–C8). Each range keeps a separate pattern. |
+| Root | In Scale range, set the melodic scale's starting pitch. Existing cells keep their row positions and map to the new pitches. |
+| Scale | In Scale range, select available melodic pitches. Each scale retains a separate pattern. |
+| Octave | In Scale range, set the melodic grid register from 2 to 6. |
 | Synth | Choose the melodic preset independently of Keyboard mode. |
 | Randomization slider | Set each cell's activation probability from 10% to 80%, initially 30%. |
 | Shuffle icon | Replace the current pattern with random cells and velocities between 0.6 and 1.0. |
@@ -30,7 +31,17 @@ In Grid → Melodic, the left pitch labels are styled as a vertical piano with w
 | Clear | Erase the pattern currently being edited. |
 | Add to Looper | Copy the visible mode's pattern into a new one-bar layer. |
 
-Preview plays both the drum pattern and the melodic pattern for the selected scale, including the other mode's retained pattern. Add to Looper copies only the visible mode. Add drums and melody separately to transfer both.
+Preview plays both the drum pattern and the melodic pattern for the selected range (and selected scale in Scale range), including the other mode's retained pattern. Add to Looper copies only the visible mode. Add drums and melody separately to transfer both.
+
+### Full piano navigation
+
+In Grid → Melodic, set Range to **Full piano (88 keys)**. The view starts around **C4 (middle C)**. Scroll inside the grid, use **Go to** to jump to an octave or an endpoint, or click **Middle C** to return. The step-number header stays visible, and every row displays its octave, for example C3 or C4. Keyboard users can focus the scroll region and use the browser's scrolling keys.
+
+The piano keeps readable 32 px rows in a bounded viewport rather than squeezing 88 pitches onto the page. Use the grid cells to audition and sequence any pitch, including A0 and C8. Root, Scale, and Octave controls are shown only in Scale range; switching those settings does not transpose the fixed full-piano pitches.
+
+Scale and Full piano have separate patterns, retained when switching ranges or switching to Drums. Clear and Randomization act on the visible pattern only. Preview uses the selected melodic range even while Drums is visible. Returning to Scale restores its previous root, scale, octave, and pattern.
+
+This feature increases pitch choices, not loop length: there are still 16 steps at the same BPM. The six existing synthesized presets and their 16-voice limit remain unchanged; playing or randomizing more simultaneous pitches can exceed that limit. A larger range is not a new sampled piano sound library.
 
 New cells have velocity 0.8. The model stores individual cell velocities, but the UI does not expose manual velocity editing. Melodic cells have a fixed duration of approximately one sixteenth note. The UI has no adjustable step count, note-length editor, ties, or swing.
 
@@ -78,7 +89,7 @@ The pencil action replaces visible grid content, requesting confirmation if it c
 
 - Note starts are rounded to sixteenth-note steps.
 - Only starts that fit the 16 columns and available pitch rows are retained.
-- Melodic conversion selects Chromatic and derives an octave from a starting value of 4, retaining the current root. Notes outside the resulting range can be omitted.
+- Melodic conversion selects Full piano, preserving pitches across octaves from A0 through C8. Notes outside that traditional piano range are omitted. It does not change the saved Scale-range settings.
 - Held-note durations are not reconstructed; the grid uses short fixed notes.
 - Add to Looper creates another layer. The original layer remains until removed.
 
@@ -86,7 +97,7 @@ Save or duplicate the original before conversion when preserving timing and note
 
 ## Sessions
 
-Save stores BPM, layers, and grid state in browser `localStorage`. The first save asks for a name; later saves overwrite the active session. Save As creates a separate session when given a different name; keeping the active name overwrites it.
+Save stores BPM, layers, and grid state, including the selected melodic range and its retained full-piano pattern, in browser `localStorage`. Existing sessions without range metadata load in Scale range. The first save asks for a name; later saves overwrite the active session. Save As creates a separate session when given a different name; keeping the active name overwrites it.
 
 Load lists saved sessions and allows restoration or deletion. Reloading restores the last saved active session, not unsaved edits. On small screens, session actions appear in the header menu.
 
@@ -94,7 +105,7 @@ Storage belongs to the current site origin and browser profile. Development and 
 
 ## Sharing
 
-Share copies a URL carrying compressed JSON after `#s=`. It contains BPM, layers, and grid state without uploading a project to a backend. The link is a snapshot; later changes require a new link.
+Share copies a URL carrying compressed JSON after `#s=`. It contains BPM, layers, and grid state without uploading a project to a backend. New links use format version 2, including melodic range and full-piano data; version-1 links still load in their original Scale range. The link is a snapshot; later changes require a new link.
 
 Opening a valid link restores its data, clears the active local session association, and removes the fragment from the displayed URL. Save the loaded project if you want it stored locally. Larger projects produce longer links. Parsing handles decompression and JSON errors, but does not perform comprehensive runtime schema validation.
 

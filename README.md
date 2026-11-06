@@ -8,7 +8,7 @@ Live site: [makeloops.online](https://makeloops.online)
 
 - A 16-step drum and melodic sequencer with scales and randomization
 - Ten synthesized drum sounds and six melodic presets (Piano, Synth, Pluck, FM, AM, Membrane)
-- A vertical piano-style pitch sidebar in Grid → Melodic
+- A vertical piano-style pitch sidebar in Grid → Melodic, with Scale and scrollable Full piano (88 keys, A0–C8) ranges
 - Computer keyboard and on-screen performance pads
 - One-bar event recording, layered playback, mute, solo, duplication, and volume
 - One-bar silence extensions before or after layer content

@@ -59,6 +59,8 @@ export type RootNote = 'C' | 'C#' | 'D' | 'D#' | 'E' | 'F' | 'F#' | 'G' | 'G#' |
 
 export type GridMode = 'drums' | 'melodic'
 
+export type MelodicRange = 'scale' | 'piano'
+
 export interface GridCell {
   active: boolean
   velocity: number // 0-1, defaults to 0.8

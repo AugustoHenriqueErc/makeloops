@@ -54,7 +54,9 @@ Performance recording stores events. Export captures master audio in real time. 
 
 `GridSequencer.vue` styles the existing melodic row labels as piano keys. `rowNotes` determines whether a row is a natural or sharp pitch. When two neighboring natural rows are two semitones apart, a decorative black key is drawn across their boundary. The decoration has no input handler and does not add a row, event, or pitch to the selected scale.
 
-The sidebar and step-number spacer share the same width, keeping cells aligned. Drum labels retain their original styling. This change does not modify the store, audio engine, session schema, computer keyboard handling, or Keyboard mode's original melodic pad.
+The sidebar and step-number spacer share the same width, keeping cells aligned. Drum labels retain their original styling. The full-piano viewport uses fixed 32 px rows, a sticky step header, and a scroll container capped at 480 px or 60vh. A watcher centers C4 when entering the full range; octave jumps change only viewport scroll position. The sidebar has no note-triggering handlers.
+
+`PIANO_NOTES` in `src/utils/scales.ts` is an immutable descending list generated from MIDI indices 108 (C8) through 21 (A0). `gridStore.melodicRange` selects `scale` or `piano`, and one computed melodic pitch list drives labels, auditions, preview, and event conversion. The audio engine and Keyboard mode's original melodic pad are unchanged.
 
 ## Timing
 
@@ -96,13 +98,13 @@ LoopPlayer filters events to the crop range and shifts their times to zero. Melo
 
 Start extension shifts events and increases duration, crop end, and start padding. Start shrinking advances crop start and consumes padding. End extension/shrinking changes the end boundary and end padding. UI operations use one-bar increments.
 
-A `GridPattern` is a row-major array of `{ active, velocity }` cells. Drum rows map to ten sound names; melodic rows come from a scale in descending pitch order. A separate drum pattern and melodic patterns keyed by scale are retained. Root and octave reinterpret rows rather than creating independent patterns.
+A `GridPattern` is a row-major array of `{ active, velocity }` cells. Drum rows map to ten sound names; melodic rows come from a scale or the full 88-key pitch list in descending pitch order. A separate drum pattern, melodic patterns keyed by scale, and one full-piano pattern are retained. Shared save/restore helpers isolate them during mode, scale, and range changes. Root and octave reinterpret Scale-range rows rather than creating independent patterns. They do not alter the fixed full-piano pitches. Melodic layer-to-grid conversion uses Full piano to retain all note starts within A0–C8; the existing one-bar step snapping and fixed note duration still apply.
 
 ## Persistence and restoration
 
 `SavedSession` contains `id`, `name`, `savedAt`, `bpm`, `layers`, and nullable `grid`. Snapshots are deep-cloned through JSON serialization. Sessions use the `makeloops_sessions` localStorage key; current identity uses `makeloops_current_session`.
 
-Share version 1 contains `{ v, bpm, layers, grid? }`. Grid data includes the visible and retained patterns, mode, root, scale, octave, and melodic preset. It omits preview state, randomization density, and Keyboard preset/octave. `lz-string` encodes JSON into the `#s=` fragment. Version mismatches warn rather than reject; parsed data uses a TypeScript assertion rather than schema validation.
+Share version 2 contains `{ v, bpm, layers, grid? }`; version-1 links are still accepted. The shared `GridState` type includes the visible and retained patterns, mode, root, scale, octave, and melodic preset, plus optional `melodicRange` and `pianoPattern` fields. Missing range metadata defaults to Scale and an empty 88-row piano pattern, preventing state from another project from leaking into old sessions. New save/share snapshots always include both fields. It omits preview state, randomization density, and Keyboard preset/octave. `lz-string` encodes JSON into the `#s=` fragment. Unknown versions warn rather than reject; parsed data uses a TypeScript assertion rather than schema validation.
 
 On startup, share data takes precedence over a remembered local session. Local session restoration may defer scheduling until audio initialization. Shared restoration attempts audio initialization during mount, which browser audio policies may restrict.
 

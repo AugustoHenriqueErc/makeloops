@@ -1,23 +1,15 @@
 import { compressToEncodedURIComponent, decompressFromEncodedURIComponent } from 'lz-string'
-import type { LoopLayer, GridPattern, GridMode, ScaleName, RootNote, InstrumentType } from '@/types'
+import type { LoopLayer } from '@/types'
+import type { GridState } from '@/stores/sessionStore'
 
 // Version for future compatibility
-const SHARE_VERSION = 1
+const SHARE_VERSION = 2
 
 interface ShareableState {
   v: number
   bpm: number
   layers: LoopLayer[]
-  grid?: {
-    mode: GridMode
-    pattern: GridPattern
-    drumsPattern: GridPattern
-    melodicPatterns: Record<ScaleName, GridPattern>
-    scaleName: ScaleName
-    rootNote: RootNote
-    octave: number
-    melodicInstrument: Exclude<InstrumentType, 'drums'>
-  }
+  grid?: GridState
 }
 
 export function useShareableLink() {
@@ -61,7 +53,7 @@ export function useShareableLink() {
       const state = JSON.parse(json) as ShareableState
 
       // Version check for future compatibility
-      if (state.v !== SHARE_VERSION) {
+      if (state.v !== 1 && state.v !== SHARE_VERSION) {
         console.warn(`Share link version ${state.v} may not be fully compatible with current version ${SHARE_VERSION}`)
       }
 

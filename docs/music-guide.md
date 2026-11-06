@@ -60,7 +60,7 @@ An octave spans 12 semitones. C5 has twice the frequency of C4. Note identifiers
 
 A melody is a sequence of pitches. A chord combines pitches at the same time: enable several melodic cells in a column to play a chord. Polyphony means multiple notes sounding together; each melodic preset instance supports up to 16 voices.
 
-A root sets the starting pitch for a scale, a selected collection of pitches. The melodic grid restricts its rows to that scale. It does not generate chord progressions or guarantee a particular musical result. Keyboard performance remains chromatic, independently of grid scale settings.
+A root sets the starting pitch for a scale, a selected collection of pitches. In Scale range, the melodic grid restricts its rows to that scale. Full piano range instead exposes all 88 chromatic pitches from A0 to C8, without scale filtering. It does not generate chord progressions or guarantee a particular musical result. Keyboard performance remains chromatic, independently of grid scale settings.
 
 ### Available scales
 
@@ -100,7 +100,7 @@ Presets are fixed; there are no UI controls for waveform, ADSR, or modulation de
 
 Mappings use `KeyboardEvent.key`, so key positions and punctuation depend on keyboard layout. Repeat keydowns are suppressed until release. Note triggering is ignored while typing in inputs or textareas. The listener remains active in Grid mode too.
 
-The piano-style sidebar belongs to Grid → Melodic. White keys represent natural notes and dark keys represent sharps in the selected scale. Decorative black keys between natural rows suggest piano geometry without adding editable pitches. Keyboard mode uses the original button-style melodic pad.
+The piano-style sidebar belongs to Grid → Melodic. White keys represent natural notes and dark keys represent sharps. Scale range shows the selected scale, with decorative black keys between natural rows. Full piano range makes every pitch from A0 to C8 editable and labels the octave on every row. C4 is middle C; scroll or use the Middle C button and octave jump control to navigate. Keyboard mode uses the original button-style melodic pad.
 
 | Key | Drum |
 | --- | --- |
@@ -149,7 +149,7 @@ At base octave 4, A plays C4 and K plays C5. Although the play tooltip mentions 
 6. Preview and count four beats per repetition. Listen to kick and snare alternating.
 7. Stop preview and Add to Looper.
 8. Clear the drum grid to avoid doubling the saved drum layer during later preview.
-9. Switch to Melodic, choose root C, Pentatonic Minor, octave 4, and Pluck.
+9. Switch to Melodic, select Range → Scale, then choose root C, Pentatonic Minor, octave 4, and Pluck.
 10. Place C on step 1, D# on step 7, G on step 9, and A# on step 15, using row labels to find pitches.
 11. Use With Loops to hear the melody against your drums. Stop and Add to Looper.
 12. Play both saved layers using the Looper controls and save the session with a descriptive name.

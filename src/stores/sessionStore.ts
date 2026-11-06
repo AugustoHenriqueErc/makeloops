@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { LoopLayer, GridPattern, GridMode, ScaleName, RootNote, InstrumentType } from '@/types'
+import type { LoopLayer, GridPattern, GridMode, ScaleName, RootNote, InstrumentType, MelodicRange } from '@/types'
 
 export interface GridState {
   mode: GridMode
@@ -11,6 +11,9 @@ export interface GridState {
   rootNote: RootNote
   octave: number
   melodicInstrument: Exclude<InstrumentType, 'drums'>
+  // Optional so existing saved sessions and version-1 links remain valid.
+  melodicRange?: MelodicRange
+  pianoPattern?: GridPattern
 }
 
 export interface SavedSession {

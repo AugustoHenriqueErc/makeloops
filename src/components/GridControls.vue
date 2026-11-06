@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { useGridStore } from '@/stores/gridStore'
 import { SCALE_DEFINITIONS, ROOT_NOTES } from '@/utils/scales'
-import type { ScaleName, RootNote, InstrumentType } from '@/types'
+import type { ScaleName, RootNote, InstrumentType, MelodicRange } from '@/types'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Slider } from '@/components/ui/slider'
@@ -60,44 +60,57 @@ function handleDensityChange(value: number[] | undefined) {
 
     <!-- Melodic-only controls -->
     <template v-if="gridStore.mode === 'melodic'">
-      <!-- Root Note -->
       <div class="flex items-center gap-2">
-        <Label class="text-xs uppercase tracking-wider text-muted-foreground">Root</Label>
+        <Label for="grid-melodic-range" class="text-xs uppercase tracking-wider text-muted-foreground">Range</Label>
         <select
-          :value="gridStore.rootNote"
+          id="grid-melodic-range"
+          :value="gridStore.melodicRange"
           class="h-8 px-2 rounded-md border border-border bg-secondary/50 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
-          @change="gridStore.setRootNote(($event.target as HTMLSelectElement).value as RootNote)"
+          @change="gridStore.setMelodicRange(($event.target as HTMLSelectElement).value as MelodicRange)"
         >
-          <option v-for="note in ROOT_NOTES" :key="note" :value="note">{{ note }}</option>
+          <option value="scale">Scale</option>
+          <option value="piano">Full piano (88 keys)</option>
         </select>
       </div>
+      <template v-if="gridStore.melodicRange === 'scale'">
+        <!-- Root Note -->
+        <div class="flex items-center gap-2">
+          <Label class="text-xs uppercase tracking-wider text-muted-foreground">Root</Label>
+          <select
+            :value="gridStore.rootNote"
+            class="h-8 px-2 rounded-md border border-border bg-secondary/50 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+            @change="gridStore.setRootNote(($event.target as HTMLSelectElement).value as RootNote)"
+          >
+            <option v-for="note in ROOT_NOTES" :key="note" :value="note">{{ note }}</option>
+          </select>
+        </div>
 
-      <!-- Scale -->
-      <div class="flex items-center gap-2">
-        <Label class="text-xs uppercase tracking-wider text-muted-foreground">Scale</Label>
-        <select
-          :value="gridStore.scaleName"
-          class="h-8 px-2 rounded-md border border-border bg-secondary/50 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
-          @change="gridStore.setScale(($event.target as HTMLSelectElement).value as ScaleName)"
-        >
-          <option v-for="scale in scaleOptions" :key="scale.value" :value="scale.value">
-            {{ scale.label }}
-          </option>
-        </select>
-      </div>
+        <!-- Scale -->
+        <div class="flex items-center gap-2">
+          <Label class="text-xs uppercase tracking-wider text-muted-foreground">Scale</Label>
+          <select
+            :value="gridStore.scaleName"
+            class="h-8 px-2 rounded-md border border-border bg-secondary/50 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+            @change="gridStore.setScale(($event.target as HTMLSelectElement).value as ScaleName)"
+          >
+            <option v-for="scale in scaleOptions" :key="scale.value" :value="scale.value">
+              {{ scale.label }}
+            </option>
+          </select>
+        </div>
 
-      <!-- Octave -->
-      <div class="flex items-center gap-2">
-        <Label class="text-xs uppercase tracking-wider text-muted-foreground">Octave</Label>
-        <select
-          :value="gridStore.octave"
-          class="h-8 px-2 rounded-md border border-border bg-secondary/50 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
-          @change="gridStore.setOctave(Number(($event.target as HTMLSelectElement).value))"
-        >
-          <option v-for="oct in [2, 3, 4, 5, 6]" :key="oct" :value="oct">{{ oct }}</option>
-        </select>
-      </div>
-
+        <!-- Octave -->
+        <div class="flex items-center gap-2">
+          <Label class="text-xs uppercase tracking-wider text-muted-foreground">Octave</Label>
+          <select
+            :value="gridStore.octave"
+            class="h-8 px-2 rounded-md border border-border bg-secondary/50 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+            @change="gridStore.setOctave(Number(($event.target as HTMLSelectElement).value))"
+          >
+            <option v-for="oct in [2, 3, 4, 5, 6]" :key="oct" :value="oct">{{ oct }}</option>
+          </select>
+        </div>
+      </template>
       <!-- Instrument -->
       <div class="flex items-center gap-2">
         <Label class="text-xs uppercase tracking-wider text-muted-foreground">Synth</Label>

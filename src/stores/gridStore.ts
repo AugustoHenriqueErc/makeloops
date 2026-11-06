@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import * as Tone from 'tone'
 import type {
   GridMode,
+  MelodicRange,
   GridPattern,
   RootNote,
   ScaleName,
@@ -11,9 +12,10 @@ import type {
   LoopLayer,
   DrumSound,
 } from '@/types'
-import { getScaleNotesForGrid, SCALE_DEFINITIONS } from '@/utils/scales'
+import { getScaleNotesForGrid, PIANO_NOTES } from '@/utils/scales'
 import { instrumentFactory } from '@/audio/instruments/InstrumentFactory'
 import { useLooperStore } from './looperStore'
+import type { GridState } from './sessionStore'
 
 // Drum row configuration (bottom to top for grid display)
 const DRUM_ROWS: { sound: DrumSound; label: string }[] = [
@@ -47,28 +49,35 @@ export const useGridStore = defineStore('grid', () => {
   const isPlaying = ref(false)
   const noteDensity = ref(0.3)
   const melodicInstrument = ref<Exclude<InstrumentType, 'drums'>>('piano')
+  const melodicRange = ref<MelodicRange>('scale')
 
   // Separate pattern storage for each mode (preserved when switching)
   let drumsPattern: GridPattern = createEmptyPattern(DRUM_ROWS.length, 16)
   // Key: scaleName, stores pattern for each scale
   const melodicPatterns: Map<ScaleName, GridPattern> = new Map()
+  let pianoPattern: GridPattern = createEmptyPattern(PIANO_NOTES.length, 16)
 
   // Tone.js sequence for preview
   let sequence: Tone.Sequence | null = null
 
   // Computed
+  const melodicNotes = computed(() => melodicRange.value === 'piano'
+    ? PIANO_NOTES
+    : getScaleNotesForGrid(rootNote.value, scaleName.value, octave.value))
+
   const rowCount = computed(() => {
     if (mode.value === 'drums') {
       return DRUM_ROWS.length
     }
-    return SCALE_DEFINITIONS[scaleName.value].intervals.length
+    return melodicNotes.value.length
   })
 
   const rowLabels = computed(() => {
     if (mode.value === 'drums') {
       return DRUM_ROWS.map((d) => d.label)
     }
-    const notes = getScaleNotesForGrid(rootNote.value, scaleName.value, octave.value)
+    const notes = melodicNotes.value
+    if (melodicRange.value === 'piano') return [...notes]
     return notes.map((n) => n.replace(/\d+$/, '')) // Remove octave for display
   })
 
@@ -76,7 +85,7 @@ export const useGridStore = defineStore('grid', () => {
     if (mode.value === 'drums') {
       return DRUM_ROWS.map((d) => d.sound)
     }
-    return getScaleNotesForGrid(rootNote.value, scaleName.value, octave.value)
+    return melodicNotes.value
   })
 
   const hasContent = computed(() => {
@@ -88,6 +97,21 @@ export const useGridStore = defineStore('grid', () => {
     return Array.from({ length: rows }, () =>
       Array.from({ length: steps }, () => ({ active: false, velocity: 0.8 }))
     )
+  }
+
+  function saveCurrentPattern() {
+    const snapshot: GridPattern = JSON.parse(JSON.stringify(pattern.value))
+    if (mode.value === 'drums') drumsPattern = snapshot
+    else if (melodicRange.value === 'piano') pianoPattern = snapshot
+    else melodicPatterns.set(scaleName.value, snapshot)
+  }
+
+  function restoreCurrentPattern() {
+    const saved = mode.value === 'drums' ? drumsPattern
+      : melodicRange.value === 'piano' ? pianoPattern
+      : melodicPatterns.get(scaleName.value)
+    pattern.value = saved ? JSON.parse(JSON.stringify(saved))
+      : createEmptyPattern(rowCount.value, stepCount.value)
   }
 
   function toggleCell(row: number, step: number) {
@@ -105,8 +129,7 @@ export const useGridStore = defineStore('grid', () => {
             drumKit.trigger(note, Tone.now(), velocity)
           }
         } else {
-          const notes = getScaleNotesForGrid(rootNote.value, scaleName.value, octave.value)
-          const note = notes[row]
+          const note = melodicNotes.value[row]
           if (note) {
             const synth = instrumentFactory.getMelodicInstrument(melodicInstrument.value)
             synth.triggerAttackRelease(note, '16n', Tone.now(), velocity)
@@ -124,12 +147,7 @@ export const useGridStore = defineStore('grid', () => {
 
   function clearPattern() {
     pattern.value = createEmptyPattern(rowCount.value, stepCount.value)
-    // Also clear the saved pattern for current mode
-    if (mode.value === 'drums') {
-      drumsPattern = createEmptyPattern(DRUM_ROWS.length, stepCount.value)
-    } else {
-      melodicPatterns.delete(scaleName.value)
-    }
+    saveCurrentPattern()
   }
 
   function randomizePattern() {
@@ -150,56 +168,25 @@ export const useGridStore = defineStore('grid', () => {
 
   function setMode(newMode: GridMode) {
     if (newMode === mode.value) return
-
-    // Save current pattern before switching
-    if (mode.value === 'drums') {
-      drumsPattern = JSON.parse(JSON.stringify(pattern.value))
-    } else {
-      melodicPatterns.set(scaleName.value, JSON.parse(JSON.stringify(pattern.value)))
-    }
-
+    saveCurrentPattern()
     mode.value = newMode
-
-    // Restore pattern for new mode (or create empty)
-    if (newMode === 'drums') {
-      pattern.value = JSON.parse(JSON.stringify(drumsPattern))
-    } else {
-      const savedMelodicPattern = melodicPatterns.get(scaleName.value)
-      if (savedMelodicPattern) {
-        pattern.value = JSON.parse(JSON.stringify(savedMelodicPattern))
-      } else {
-        pattern.value = createEmptyPattern(
-          SCALE_DEFINITIONS[scaleName.value].intervals.length,
-          stepCount.value
-        )
-      }
-    }
+    restoreCurrentPattern()
     // Playback continues uninterrupted - playStep handles both patterns
   }
 
   function setScale(newScale: ScaleName) {
     if (newScale === scaleName.value) return
-
-    // Save current melodic pattern before switching scales
-    if (mode.value === 'melodic') {
-      melodicPatterns.set(scaleName.value, JSON.parse(JSON.stringify(pattern.value)))
-    }
-
+    if (mode.value === 'melodic' && melodicRange.value === 'scale') saveCurrentPattern()
     scaleName.value = newScale
-
-    // Restore pattern for new scale (or create empty) if in melodic mode
-    if (mode.value === 'melodic') {
-      const savedPattern = melodicPatterns.get(newScale)
-      if (savedPattern) {
-        pattern.value = JSON.parse(JSON.stringify(savedPattern))
-      } else {
-        pattern.value = createEmptyPattern(
-          SCALE_DEFINITIONS[newScale].intervals.length,
-          stepCount.value
-        )
-      }
-    }
+    if (mode.value === 'melodic' && melodicRange.value === 'scale') restoreCurrentPattern()
     // Playback continues uninterrupted
+  }
+
+  function setMelodicRange(range: MelodicRange) {
+    if (range === melodicRange.value) return
+    if (mode.value === 'melodic') saveCurrentPattern()
+    melodicRange.value = range
+    if (mode.value === 'melodic') restoreCurrentPattern()
   }
 
   function setRootNote(note: RootNote) {
@@ -222,7 +209,8 @@ export const useGridStore = defineStore('grid', () => {
   function playStep(step: number, time: number) {
     // Get the active patterns - use pattern.value for current mode, saved pattern for the other
     const activeDrumsPattern = mode.value === 'drums' ? pattern.value : drumsPattern
-    const activeMelodicPattern = mode.value === 'melodic' ? pattern.value : melodicPatterns.get(scaleName.value)
+    const activeMelodicPattern = mode.value === 'melodic' ? pattern.value
+      : melodicRange.value === 'piano' ? pianoPattern : melodicPatterns.get(scaleName.value)
 
     // Play drums pattern
     const drumNotes = DRUM_ROWS.map((d) => d.sound)
@@ -237,10 +225,9 @@ export const useGridStore = defineStore('grid', () => {
 
     // Play melodic pattern (for current scale)
     if (activeMelodicPattern) {
-      const melodicNotes = getScaleNotesForGrid(rootNote.value, scaleName.value, octave.value)
       for (let row = 0; row < activeMelodicPattern.length; row++) {
         const cell = activeMelodicPattern[row]?.[step]
-        const note = melodicNotes[row]
+        const note = melodicNotes.value[row]
         if (cell?.active && note) {
           const synth = instrumentFactory.getMelodicInstrument(melodicInstrument.value)
           synth.triggerAttackRelease(note, '16n', time, cell.velocity)
@@ -384,12 +371,7 @@ export const useGridStore = defineStore('grid', () => {
 
   // Get full state for sharing (includes saved patterns)
   function getStateForSharing() {
-    // Save current pattern to appropriate storage first
-    if (mode.value === 'drums') {
-      drumsPattern = JSON.parse(JSON.stringify(pattern.value))
-    } else {
-      melodicPatterns.set(scaleName.value, JSON.parse(JSON.stringify(pattern.value)))
-    }
+    saveCurrentPattern()
 
     return {
       mode: mode.value,
@@ -400,22 +382,21 @@ export const useGridStore = defineStore('grid', () => {
       rootNote: rootNote.value,
       octave: octave.value,
       melodicInstrument: melodicInstrument.value,
+      melodicRange: melodicRange.value,
+      pianoPattern,
     }
   }
 
   // Hydrate from shared state
-  function hydrateFromState(state: {
-    mode: GridMode
-    pattern: GridPattern
-    drumsPattern: GridPattern
-    melodicPatterns: Record<ScaleName, GridPattern>
-    scaleName: ScaleName
-    rootNote: RootNote
-    octave: number
-    melodicInstrument: Exclude<InstrumentType, 'drums'>
-  }) {
+  function hydrateFromState(state: GridState) {
     // Stop any preview first
     stopPreview()
+
+    // Missing range metadata identifies an existing scale-based project.
+    melodicRange.value = state.melodicRange === 'piano' ? 'piano' : 'scale'
+    pianoPattern = state.pianoPattern
+      ? JSON.parse(JSON.stringify(state.pianoPattern))
+      : createEmptyPattern(PIANO_NOTES.length, stepCount.value)
 
     // Restore saved patterns (deep clone to ensure reactivity)
     drumsPattern = JSON.parse(JSON.stringify(state.drumsPattern))
@@ -489,24 +470,9 @@ export const useGridStore = defineStore('grid', () => {
       mode.value = 'melodic'
       melodicInstrument.value = instrumentId as Exclude<InstrumentType, 'drums'>
 
-      // Use chromatic scale for maximum flexibility
-      scaleName.value = 'chromatic'
-
-      // Analyze notes to determine octave from the lowest note
-      const noteRegex = /^([A-G]#?)(\d)$/
-      let lowestOctave = 4
-      events
-        .filter((e) => e.type === 'noteOn')
-        .forEach((e) => {
-          const match = e.note.match(noteRegex)
-          if (match && match[2]) {
-            lowestOctave = Math.min(lowestOctave, parseInt(match[2], 10))
-          }
-        })
-      octave.value = lowestOctave
-
-      // Get scale notes for mapping
-      const scaleNotes = getScaleNotesForGrid(rootNote.value, scaleName.value, octave.value)
+      // Preserve pitches spanning several octaves when editing a melodic layer.
+      melodicRange.value = 'piano'
+      const scaleNotes = PIANO_NOTES
       const noteToRow: Record<string, number> = {}
       scaleNotes.forEach((note, index) => {
         noteToRow[note] = index
@@ -532,8 +498,7 @@ export const useGridStore = defineStore('grid', () => {
           }
         })
 
-      // Save to melodic patterns
-      melodicPatterns.set(scaleName.value, JSON.parse(JSON.stringify(pattern.value)))
+      pianoPattern = JSON.parse(JSON.stringify(pattern.value))
     }
   }
 
@@ -552,6 +517,7 @@ export const useGridStore = defineStore('grid', () => {
     isPlaying,
     noteDensity,
     melodicInstrument,
+    melodicRange,
     // Computed
     rowCount,
     rowLabels,
@@ -563,6 +529,7 @@ export const useGridStore = defineStore('grid', () => {
     clearPattern,
     randomizePattern,
     setMode,
+    setMelodicRange,
     setScale,
     setRootNote,
     setOctave,
